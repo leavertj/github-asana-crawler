@@ -1,13 +1,17 @@
 from datetime import datetime, timedelta
-import json, re
+import json, re, os
+from dotenv import load_dotenv
 
 from github import Github
 import asana
 
+load_dotenv()
+
+ASANA_TOKEN=os.getenv('ASANA_TOKEN')
+GITHUB_TOKEN=os.getenv('GITHUB_TOKEN')
+ASANA_PROJECT_GID = os.getenv('ASANA_PROJECT_GID')
 
 TEAM_GITHUB_ORG = 'awslabs'
-ASANA_PROJECT_GID = '1173676030516145'
-ASANA_WORKSPACE_GIT = '1141277692235279'
 LOOKBACK=14
 
 REPOS = [
@@ -34,7 +38,6 @@ REPOS = [
 def get_github_client(access_key):
     return Github(access_key)
 
-
 def get_asana_client(access_key):
     return asana.Client.access_token(access_key)
 
@@ -48,12 +51,14 @@ def parse_asana_ticket_name(ticket_name):
     if matches:
         return matches.group(1),matches.group(2),matches.group(3),matches.group(4)
     else:
-        return None
+        return None,None,None,None
 
 def get_asana_tasks(asana_client, project_gid):
     tasks = {}
     for task in asana_client.tasks.find_by_project(project_gid):
-        repo, issueid, last_comment_id, title = parse_asana_ticket_name(task['name'])
+        repo, issueid, last_comment_id, _ = parse_asana_ticket_name(task['name'])
+        if not repo or not issueid:
+            continue
         if repo not in tasks.keys():
             tasks[repo] = {}
         tasks[repo].update(
